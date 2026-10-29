@@ -1,14 +1,17 @@
 # data
 
-- `raw/`: files exactly as downloaded from the papers. Never edit these.
-- `extracted/`: anything we produce from them, e.g. values digitized from a
-  figure. Keep digitized group means separate from individual-animal records
-  and from published model predictions.
+- `raw/`: files exactly as we downloaded them from the papers. Please don't
+  edit these.
+- `extracted/`: stuff we make from them, like numbers digitized from a figure.
+  Keep group means separate from individual-animal data and from the papers'
+  own model predictions.
 
-For every source, record: study, group, animal or cohort ID (if available),
-dosing times, dose units, visit times, time origin, LVEF, error type (SD or SEM),
-sample size at each visit, and where in the paper it came from. If a value was
-digitized, also note the panel and the repeat-extraction difference.
+For each source, try to write down: which study and group, the animal or cohort
+ID (if there is one), when the doses were given and in what units, the visit
+times and what t = 0 means, LVEF, whether the error bars are SD or SEM, how many
+animals were measured at each visit, and where in the paper it came from. For
+digitized values, also note the figure panel and how much two extractions
+differed.
 
-Check with Professor Wei before committing any file from a paper, in case there
-are sharing restrictions.
+Let's check with Professor Wei before putting any file from a paper in here, in
+case there are sharing rules.

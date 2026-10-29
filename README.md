@@ -1,64 +1,68 @@
 # doxo_lvef_design
 
-Code for our group project on doxorubicin-related LVEF changes in rats. The question
-is when cardiac function should be measured, and whether a small number of
-measurements is enough to tell slow recovery, persistent dysfunction and delayed
-responses apart. We use small ODE models, simulations with known parameters and
-published rat studies (Timm 2020, Cove-Smith 2014, Sang 2021).
+This is the code for our undergrad research project with Professor Wei. We're
+looking at how doxorubicin affects heart function (LVEF) in rats, and mainly at
+*when* it should be measured. If you only get a few measurements, can you
+actually tell slow recovery, permanent damage and delayed effects apart? We try
+to answer that with small ODE models, simulations where we know the true
+answer, and a few published rat studies (Timm 2020, Cove-Smith 2014, Sang 2021).
 
-Team: Xinan Qin (simulation and fitting infrastructure, fall 2026),
-Hamda Anjum (estimation and uncertainty), Diya Pidatala (schedule comparison and
-design). Mentor: Professor Ning Wei.
+Who does what:
+- Xinan: simulation and fitting code (fall 2026, until the handoff in Week 6)
+- Hamda: estimation and uncertainty
+- Diya: comparing measurement schedules / design
 
-## Setup
+## Getting it running
 
-Python 3.13. From the repo root:
+You need Python 3.13. From the repo folder:
 
 ```
 python -m venv .venv
-.venv\Scripts\activate          # Mac/Linux: source .venv/bin/activate
+.venv\Scripts\activate          # on Mac/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+python scripts/W1.py
 ```
 
-Versions are pinned in `requirements.txt`.
+If that last line prints a table and saves two files in `outputs/`, you're good.
+The package versions are pinned so we all get the same numbers.
 
-## Layout
+## What's where
 
 ```
-scripts/        runnable scripts, one per milestone (W1.py, ...)
-src/doxo_lvef/  the package; modules get added as the plan reaches them
-tests/          unit tests (start in Week 2)
-configs/        scenario/schedule configs and seeds, frozen before evaluation
-data/           source data with provenance (see data/README.md)
-docs/weekly/    short notes for each week: what was done, open questions
-outputs/        generated results, not tracked in git (rerun the scripts)
+scripts/        one script per milestone (W1.py for now)
+src/doxo_lvef/  the actual package, still basically empty
+tests/          unit tests, starting Week 2
+configs/        scenario/schedule settings and seeds (we freeze these before the final runs)
+data/           data from the papers, see data/README.md
+docs/weekly/    a short note for each week: what got done, what we're unsure about
+outputs/        results from running the scripts (not in git, just rerun to get them)
 ```
 
-Planned modules in `src/doxo_lvef/`, following the proposal: `inputs.py`,
-`models.py`, `fit.py`, `identifiability.py`, `design.py`, `evaluate.py`. They
-will be added when each part is actually built, not before.
+The proposal suggests splitting the package into `inputs.py`, `models.py`,
+`fit.py`, `identifiability.py`, `design.py` and `evaluate.py`. I'm only going to
+add each one when we actually get to that part, so the folder doesn't fill up
+with empty files.
 
-## Status
+## Where we are
 
-| week | dates | what | notes |
+| week | dates | what | status |
 |---|---|---|---|
-| 1 | Oct 19-23 | minimal end-to-end script (`scripts/W1.py`) | done, see `docs/weekly/W1.md` |
-| 2 | Oct 26-30 | baseline simulator + unit tests | in progress |
-| 3 | Nov 2-6 | analytical vs numerical check, bounded fitting interface | |
-| 4 | Nov 9-13 | three fixed-schedule comparison, config/seed tests | |
-| 5 | Nov 16-20 | freeze pilot package, handoff | |
+| 1 | Oct 19-23 | minimal end-to-end script | done (`docs/weekly/W1.md`) |
+| 2 | Oct 26-30 | simulator + unit tests | working on it |
+| 3 | Nov 2-6 | check analytical vs numerical solution, fitting interface | |
+| 4 | Nov 9-13 | compare the three fixed schedules | |
+| 5 | Nov 16-20 | freeze the pilot and hand off | |
 
-`scripts/W1.py` stays runnable as the package grows.
+`scripts/W1.py` should keep working the whole time, even after the package
+grows, so nobody gets stuck waiting on me.
 
-## Ground rules we're following
+## A few rules from the proposal we're sticking to
 
-These come from the proposal. Most of them are about keeping results honest.
-
-- Raw observations, digitized summaries, fitted curves and simulation truth are
-  kept separate and labeled.
-- Models, schedules, thresholds and seeds are frozen before looking at final
-  evaluation results. Failed fits stay in the denominator.
-- Flat profiles, estimates at bounds and unresolved comparisons are reported,
-  not hidden.
-- R, P (and Z later) are functional model quantities, not measurements of cell
-  injury.
+- Don't mix up raw data, numbers we digitized from figures, fitted curves and
+  simulation truth. Label everything.
+- Settle on the models, schedules, thresholds and seeds *before* looking at the
+  final results. Failed fits still count.
+- If a profile is flat, an estimate hits a bound, or two models can't be told
+  apart, say so. That's a real result, not something to hide.
+- R and P are just quantities in the model. They aren't measurements of how many
+  cells are damaged.
