@@ -35,7 +35,7 @@ tests/          unit tests, starting Week 2
 configs/        scenario/schedule settings and seeds (we freeze these before the final runs)
 data/           data from the papers, see data/README.md
 docs/weekly/    a short note for each week: what got done, what we're unsure about
-outputs/        results from running the scripts (not in git, just rerun to get them)
+outputs/        results from running the scripts (committed so you can look without running anything)
 ```
 
 The proposal suggests splitting the package into `inputs.py`, `models.py`,
