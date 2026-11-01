@@ -1,0 +1,101 @@
+# Fall pilot settings (Weeks 1-5).
+#
+# This file is the one place the pilot's assumptions live, so we don't end up
+# with three slightly different copies in three scripts. Two exceptions for now:
+# the replicate count is still only N_REPS in W1 (it moves in here with the
+# Week 4 seed work), and scripts/W1.py keeps its own settings, simulator and
+# grid fit, so the Week 1 numbers stay a fixed reference and it still works as
+# the fallback. tests/test_config.py checks that W1 and this file still agree.
+#
+# Units: time in weeks, LVEF in percentage points (pp), doses in mg/kg before
+# normalizing. We freeze this file for the Week 5 pilot handoff. The final
+# evaluation gets its own frozen seeds. If something has to change after the
+# freeze, write down why in docs/weekly/.
+
+[seeds]
+# Development seed (W1, the pilot, the schedule search). We've already looked at
+# results from it, so it must never be used for the final evaluation. Those seeds
+# get picked and frozen separately before the final runs (Week 8 in the proposal).
+development = 20261019
+
+[dosing]
+# Eight weekly doses of 1.25 mg/kg, the first one at week 0.
+dose_mg_per_kg = 1.25
+n_doses = 8
+first_dose_week = 0.0
+interval_weeks = 1.0
+# Every dose is divided by this reference, so 1.25 mg/kg becomes q = 0.625.
+reference_mg_per_kg = 2.0
+# Effective input timescale. This is an assumption, not a measured PK half-life.
+tau_weeks = 0.25
+
+[visits]
+# Visit convention (confirmed by Prof. Wei, Oct 29):
+# a visit in a dose week is taken just BEFORE that week's dose, i.e. at the
+# trough. H and G_k are continuous at a dose time, so "just before" and
+# "exactly at t_j" give the same number; in the code a dose adds exactly 0 at
+# s = 0. offset_weeks moves every FOLLOW-UP visit later (the baseline stays
+# before the first dose). Keep it at 0 unless you're doing a sensitivity check;
+# with tau = 0.25, one day after a dose already adds about 44% of its H term.
+offset_weeks = 0.0
+# The pretreatment baseline. Every schedule starts here (checked in the tests),
+# and the Week 4 comparison and the Week 7 search will use it too.
+baseline_week = 0.0
+# Follow-up times we're allowed to pick from (proposal: one baseline + four of
+# these, so 126 possible schedules; also checked in the tests). Weeks 1, 2, 4
+# and 6 are dose weeks.
+candidate_weeks = [1.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0]
+
+[schedules]
+# The three fixed pilot schedules. Each list is baseline + four follow-ups.
+# "uniform" is the near-uniform comparator we can get on the candidate grid,
+# not exactly equal spacing (proposal wording).
+uniform = [0.0, 4.0, 10.0, 16.0, 20.0]
+treatment = [0.0, 2.0, 6.0, 8.0, 20.0]
+late = [0.0, 6.0, 12.0, 16.0, 20.0]
+
+[truth]
+# Baseline LVEF used to simulate data.
+L0 = 75.0
+
+# The three pilot cases. b_R = a * (1 - f_P), b_P = a * f_P.
+# noise_sd 1 is meant as a group-mean SEM regime (n about 8-20 rats) and 3 as an
+# individual-animal regime. Both are illustrative, not taken from the papers.
+[[cases]]
+a = 2.0
+f_P = 0.3
+half_life_weeks = 2.0
+noise_sd = 1.0
+
+[[cases]]
+a = 4.0
+f_P = 0.7
+half_life_weeks = 8.0
+noise_sd = 1.0
+
+[[cases]]
+a = 1.0
+f_P = 0.3
+half_life_weeks = 8.0
+noise_sd = 3.0
+
+[fit]
+# Bounds for the synthetic rat experiment only. The proposal calls them numerical
+# bounds, not biological ranges.
+L0_bounds = [50.0, 95.0]
+b_R_bounds = [0.0, 6.0]
+b_P_bounds = [0.0, 6.0]
+# Log-spaced recovery half-life grid. An interval open above at 52 weeks means
+# slower than we can resolve over 20 weeks of follow-up, which includes
+# persistence: even a 52-week half-life recovers about 23% of a deficit in 20
+# weeks. The 104-week rerun is spring work.
+half_life_min_weeks = 0.1
+half_life_max_weeks = 52.0
+n_grid = 60
+# A half-life only gets reported when the nominal 95% profile interval is closed
+# on both sides by the data and is one piece. A side doesn't count as closed if
+# its first ruled-out grid point is the grid end or has a fit on a cap (b_R or
+# b_P at 6, or L0 at 50 or 95). The cutoff is computed in code:
+# chi2.ppf(0.95, 1) = 3.8415, with the true simulation sigma. Still needs
+# Prof. Wei's okay before it gets frozen.
+profile_ci_level = 0.95

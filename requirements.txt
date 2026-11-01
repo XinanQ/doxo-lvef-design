@@ -2,3 +2,6 @@
 numpy==2.3.4
 scipy==1.16.2
 matplotlib==3.10.7
+
+# testing (Week 2 on)
+pytest==8.4.2

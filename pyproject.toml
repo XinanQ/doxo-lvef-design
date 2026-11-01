@@ -1,0 +1,17 @@
+[project]
+name = "doxo-lvef"
+version = "0.2.0"
+description = "Doxorubicin LVEF monitoring design (undergrad group project)"
+# 3.11+ because of tomllib. We all actually use 3.13 and the pins were made on 3.13.
+requires-python = ">=3.11"
+# Lowest versions we expect to work (not tested). For the exact numbers in outputs/,
+# install requirements.txt; that's what we test with.
+dependencies = ["numpy>=2.0", "scipy>=1.11", "matplotlib>=3.8"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.pytest.ini_options]
+# Lets the tests do `from doxo_lvef import ...` without installing the package first.
+pythonpath = ["src"]
+testpaths = ["tests"]
