@@ -44,10 +44,10 @@ CASES = [(2, 0.3, 2, 1), (4, 0.7, 8, 1), (1, 0.3, 8, 3)]
 # Baseline at week 0 plus four follow-up visits (stored as floats, in weeks).
 SCHEDULES = {"uniform": [0.0, 4.0, 10.0, 16.0, 20.0], "treatment": [0.0, 2.0, 6.0, 8.0, 20.0],
              "late": [0.0, 6.0, 12.0, 16.0, 20.0]}
-# Visit convention (confirmed by Prof. Wei): a visit in a dose week is taken just BEFORE that
-# week's dose, i.e. at the trough. H and G_k are continuous at a dose time, so "just before"
-# and "at t_j" give the same value. VISIT_OFFSET (weeks) moves follow-up visits later; it
-# matters a lot, since with tau = 0.25 one day after a dose already adds ~44% of its H term.
+# Visit convention (confirmed in the Oct 29 reply): a visit in a dose week is taken just BEFORE
+# that week's dose, i.e. at the trough. H and G_k are continuous at a dose time, so "just
+# before" and "at t_j" give the same value. VISIT_OFFSET (weeks) moves follow-up visits later;
+# it matters a lot, since with tau = 0.25 one day after a dose already adds ~44% of its H term.
 VISIT_OFFSET = 0.0
 # Bounds for (L0, b_R, b_P). They're just a search box for the synthetic experiment, not biology.
 NAMES = ("L0", "b_R", "b_P")

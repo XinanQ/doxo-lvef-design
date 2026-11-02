@@ -231,7 +231,7 @@ def test_params_from_case_rejects_bad_cases(a, f_P, half_life):
         params_from_case(a, f_P, half_life)
 
 
-# ---------- visit convention (Prof. Wei, Oct 29) ----------
+# ---------- visit convention (Oct 29) ----------
 
 def test_a_dose_adds_nothing_at_the_exact_dose_time():
     # "Just before the dose" and "exactly at t_j" should give the same value.
@@ -243,7 +243,7 @@ def test_a_dose_adds_nothing_at_the_exact_dose_time():
 
 
 def test_one_day_after_a_dose_adds_about_44_percent():
-    # Prof. Wei's number: with tau = 0.25, one day later adds ~44% of that dose's H term.
+    # From the Oct 29 reply: with tau = 0.25, one day later adds ~44% of that dose's H term.
     # With a single dose it's exactly 1 - exp(-(1/7)/0.25) = 0.435.
     one_dose = Dosing(times=[0.0], q=[1.0], tau=0.25)
     H_day, _ = response_basis([1 / 7], 0.3, one_dose)

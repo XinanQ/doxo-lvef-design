@@ -115,7 +115,7 @@ def effective_input(t, dosing):
 def visit_times(schedule, offset_weeks=0.0, first_dose_week=0.0):
     """Turn a schedule like [0, 2, 6, 8, 20] into the actual visit times.
 
-    Visit convention (agreed with Prof. Wei): a visit in a dose week is taken just
+    Visit convention (agreed on Oct 29): a visit in a dose week is taken just
     before that week's dose, so offset_weeks = 0 by default. The offset only moves
     the follow-ups; the first entry is the pretreatment baseline and stays put.
 

@@ -31,7 +31,7 @@ def w1():
 
 
 def test_visit_convention_is_written_in_the_config(cfg):
-    # Prof. Wei asked for the convention to be explicit in the config: offset 0 = just before the dose.
+    # An Oct 29 follow-up: the convention is written in the config, offset 0 = just before the dose.
     assert cfg["visits"]["offset_weeks"] == 0.0
 
 
