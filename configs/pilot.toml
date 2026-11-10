@@ -92,11 +92,13 @@ b_P_bounds = [0.0, 6.0]
 half_life_min_weeks = 0.1
 half_life_max_weeks = 52.0
 n_grid = 60
-# A half-life only gets reported when the nominal 95% profile interval is closed
-# on both sides by the data and is one piece. A side doesn't count as closed if
-# its first ruled-out grid point is the grid end or has a fit on a cap (b_R or
-# b_P at 6, or L0 at 50 or 95). The cutoff is computed in code:
-# chi2.ppf(0.95, 1) = 3.8415, with the true simulation sigma. This rule is my
-# own suggestion and still needs an okay before it gets frozen (see the new
-# questions in docs/weekly/W1.md).
+# The pilot comparison, the schedule search and Monte Carlo summaries use this
+# plain grid (fit_lvef with refine=False). Refinement between grid points is only
+# for reported numbers or decisions near a threshold (Oct 29 reply).
+# How a fitted half-life gets reported (Nov 8 reply). The best grid point is the
+# point estimate, but it always comes with its 95% profile-likelihood set: the
+# half-lives with (RSS - min RSS) / sigma^2 <= chi2.ppf(0.95, 1) = 3.8415, using
+# the true simulation sigma. The set gets one of four classes: identified (both
+# ends inside the grid), open above (reaches 52), open below (reaches 0.1) or
+# uninformative (both). scripts/W1.py keeps its own stricter Week 1 labels.
 profile_ci_level = 0.95

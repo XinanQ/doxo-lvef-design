@@ -115,8 +115,18 @@ def test_w2_runs_and_writes_its_figure(tmp_path):
     assert (tmp_path / "W2_trajectories.png").exists()
 
 
+def test_w3_runs_and_the_two_paths_agree(tmp_path, capsys):
+    w3 = load_script("W3")
+    w3.OUT_DIR = tmp_path
+    w3.main()
+    assert (tmp_path / "W3_check.png").exists()
+    printed = capsys.readouterr().out
+    assert "so they agree" in printed and "so the class is identified" in printed
+
+
 @pytest.mark.parametrize("name, files", [("W1", ["W1_fits.csv", "W1_fits.png"]),
-                                         ("W2", ["W2_trajectories.png"])], ids=["W1", "W2"])
+                                         ("W2", ["W2_trajectories.png"]),
+                                         ("W3", ["W3_check.png"])], ids=["W1", "W2", "W3"])
 def test_script_runs_as_a_command(name, files, tmp_path):
     # Run the real `python scripts/<name>.py`, so the `if __name__ == "__main__"` part and the
     # default output folder get tested too. It runs on a copy of scripts/, src/ and configs/, so the

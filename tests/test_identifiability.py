@@ -1,13 +1,14 @@
-"""Unit tests for identifiability.profile_interval.
+"""Unit tests for identifiability.py: profile_set (the Nov 8 classes, used by fit.py)
+and profile_interval (the Week 1 labels, used by W1).
 
 These use made-up profiles where we know the answer, so they don't depend on the
-model or the fit at all. The W1-level checks (real fits) are in test_w1_fit.py.
+model or the fit at all. The checks on real fits are in test_w1_fit.py and test_fit.py.
 """
 import numpy as np
 import pytest
 from scipy.stats import chi2
 
-from doxo_lvef.identifiability import profile_interval
+from doxo_lvef.identifiability import profile_interval, profile_set
 
 HL = np.geomspace(0.1, 52.0, 60)        # same grid as W1
 N = HL.size
@@ -160,3 +161,51 @@ def test_bad_input_is_rejected(kwargs):
     args = dict(half_lives=HL, rss=u_shape(), sigma=1.0) | kwargs
     with pytest.raises(ValueError):
         profile_interval(**args)
+
+
+# ---------- profile_set: the four classes from the Nov 8 reply ----------
+
+@pytest.mark.parametrize("center, label", [(3.0, "identified"), (52.0, "open above"), (0.1, "open below")])
+def test_profile_set_class_depends_on_which_grid_ends_the_set_reaches(center, label):
+    rss = u_shape(center=center)
+    out = profile_set(HL, rss, 1.0)
+    assert out["class"] == label and not out["has_gap"]
+    # low and high are the lowest and highest grid points IN the set, everything between is in too.
+    delta = (rss - rss.min()) / 1.0
+    lo, hi = HL.tolist().index(out["low"]), HL.tolist().index(out["high"])
+    assert np.all(delta[lo:hi + 1] <= THR) and np.array_equal(out["inside"], delta <= THR)
+    assert lo == 0 or delta[lo - 1] > THR
+    assert hi == N - 1 or delta[hi + 1] > THR
+
+
+def test_flat_profile_is_uninformative():
+    # b_R = 0 gives this: the same RSS at every half-life, so the set is the whole grid.
+    out = profile_set(HL, np.full(N, 5.0), 1.0)
+    assert out["class"] == "uninformative" and (out["low"], out["high"]) == (HL[0], HL[-1])
+
+
+def test_profile_set_keeps_a_gap():
+    # Two dips at about 1 and 10 weeks with a hump between them that's ruled out: the set has a gap.
+    # The class only looks at the grid ends, so it's still identified, and the gap gets its flag.
+    rss = np.minimum(u_shape(center=1.0, width=40.0), u_shape(center=10.0, width=40.0))
+    out = profile_set(HL, rss, 1.0)
+    assert out["class"] == "identified" and out["has_gap"]
+    between = (HL > out["low"]) & (HL < out["high"])
+    assert not out["inside"][between].all()
+
+
+def test_the_cutoff_and_the_grid_end_rules_are_the_only_differences():
+    # The Week 1 rule calls a side open when its first ruled-out point is the grid end, even though the
+    # grid end itself is ruled out. profile_set only asks whether the set reaches the end.
+    rss = np.full(N, 10.0)
+    rss[1:-1] = 0.0                                   # everything except the two grid ends is in the set
+    assert profile_set(HL, rss, 1.0)["class"] == "identified"
+    assert profile_interval(HL, rss, 1.0)["status"] == "not identified"
+
+
+@pytest.mark.parametrize("kwargs", [dict(rss=np.r_[np.nan, np.ones(N - 1)]), dict(sigma=0.0), dict(level=1.0),
+                                    dict(half_lives=HL[::-1]), dict(rss=np.ones(N - 1))],
+                         ids=["NaN rss", "sigma 0", "level 1", "decreasing", "length"])
+def test_profile_set_rejects_bad_input(kwargs):
+    with pytest.raises(ValueError):
+        profile_set(**(dict(half_lives=HL, rss=u_shape(), sigma=1.0) | kwargs))

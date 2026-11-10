@@ -3,15 +3,17 @@
 The two the proposal asks for in Week 2 are the first two: zero dose and zero
 amplitudes. The rest are cheap checks I added because each one would catch a
 specific mistake I could see myself making (wrong sign, off-by-one dose, the
-k*tau = 1 limit, the visit convention...).
+k*tau = 1 limit, the visit convention...). The Week 3 comparison with solve_ivp
+is at the end.
 
 Run with:  python -m pytest
 """
 import numpy as np
 import pytest
 
-from doxo_lvef.inputs import Dosing, effective_input, no_dosing, weekly_dosing
-from doxo_lvef.models import params_from_case, response_basis, simulate_lvef, simulate_states
+from doxo_lvef.inputs import Dosing, effective_input, load_config, no_dosing, weekly_dosing
+from doxo_lvef.models import (params_from_case, response_basis, simulate_lvef, simulate_states,
+                              simulate_states_ode)
 
 # The pilot dosing: 8 weekly doses of 1.25 mg/kg -> q = 0.625 each, total 5.
 PILOT = weekly_dosing(1.25, 8)
@@ -252,3 +254,48 @@ def test_one_day_after_a_dose_adds_about_44_percent():
     H_at, _ = response_basis([6.0], 0.3, PILOT)
     H_later, _ = response_basis([6.0 + 1 / 7], 0.3, PILOT)
     assert 0.43 < (H_later[0] - H_at[0]) / 0.625 < 0.45
+
+
+# ---------- analytical vs numerical (Week 3) ----------
+
+def biggest_gap(t, b_R, b_P, k, dosing):
+    """Largest |closed form - solve_ivp| over R, P and L."""
+    closed = simulate_states(t, 75.0, b_R, b_P, k, dosing)
+    numerical = simulate_states_ode(t, 75.0, b_R, b_P, k, dosing)
+    return max(np.max(np.abs(closed[key] - numerical[key])) for key in ("R", "P", "L"))
+
+
+def test_closed_form_matches_solve_ivp_over_the_whole_grid():
+    # The proposal's Week 3 comparison. Every half-life on the fit grid, plus k*tau = 1 (right on
+    # it, which uses the limit formula, and just off it on both sides) and k = 0. The amplitudes are
+    # the largest the fit allows (6), and the times include every dose time and candidate visit week.
+    # Here the two agree to about 6e-9; 1e-6 pp is the tolerance scripts/W3.py uses.
+    cfg = load_config()
+    f = cfg["fit"]
+    half_lives = np.geomspace(f["half_life_min_weeks"], f["half_life_max_weeks"], f["n_grid"])
+    t = np.unique(np.concatenate([T, PILOT.times, cfg["visits"]["candidate_weeks"]]))
+    for k in [*(np.log(2) / half_lives), 4.0, 4.0 - 1e-9, 4.0 + 1e-9, 0.0]:
+        assert biggest_gap(t, 6.0, 6.0, k, PILOT) < 1e-6, f"k = {k}"
+
+
+def test_solve_ivp_gives_the_value_from_just_before_the_dose():
+    # The s = 0 term from the Oct 29 reply. In the solve_ivp path a visit exactly at a dose time
+    # is the start of a new piece, i.e. where the last piece ended. So it should match both
+    # "just before the dose" and the closed form. (If the dose-time visits fell between two
+    # pieces, they'd stay at 0 and L would come out as L0.)
+    for k in (0.0, 0.3, 4.0):
+        at = simulate_states_ode([2.0, 6.0], 75.0, 1.4, 0.6, k, PILOT)["L"]
+        before = simulate_states_ode([2.0 - 1e-9, 6.0 - 1e-9], 75.0, 1.4, 0.6, k, PILOT)["L"]
+        assert at == pytest.approx(before, abs=1e-8)
+        assert at == pytest.approx(simulate_lvef([2.0, 6.0], 75.0, 1.4, 0.6, k, PILOT), abs=1e-8)
+
+
+def test_solve_ivp_path_handles_other_dosing():
+    # Not just the pilot: uneven times and amounts, two doses at the same time (a piece of length
+    # 0), times before the first dose, and no doses at all.
+    odd = Dosing(times=[0.0, 0.5, 0.5, 3.0], q=[1.0, 0.2, 0.3, 0.7], tau=0.4)
+    t = np.linspace(-1.0, 15.0, 321)
+    for k in (0.0, 0.2, 1 / 0.4, 9.0):
+        assert biggest_gap(t, 2.0, 1.0, k, odd) < 1e-6, f"k = {k}"
+    assert np.all(simulate_states_ode(t[t < 0], 70.0, 2.0, 1.0, 0.2, odd)["L"] == 70.0)
+    assert np.all(simulate_states_ode(T, 75.0, 3.0, 2.0, 0.3, no_dosing())["L"] == 75.0)

@@ -14,6 +14,9 @@ Solving the two equations gives a closed form (this is what everything uses):
 where H is "how much dose has come in so far" and G_k is "how much of it hasn't
 recovered yet". See response_basis() for the formulas.
 
+simulate_states_ode() solves the same two equations numerically with solve_ivp
+instead. It's only there to check the closed form (Week 3); nothing else uses it.
+
 Shapes: every function that takes t accepts a float or a 1-D array-like of length
 n_t and returns 1-D arrays of length n_t. A plain float t comes back as an array of
 length 1. 2-D t or NaN/inf times get a ValueError instead of a silently weird answer.
@@ -22,6 +25,7 @@ length 1. 2-D t or NaN/inf times get a ValueError instead of a silently weird an
 helper will come with the Week 4 seed work.)
 """
 import numpy as np
+from scipy.integrate import solve_ivp
 
 from doxo_lvef.inputs import check_times
 
@@ -45,7 +49,7 @@ def response_basis(t, k, dosing):
     out the slower rate means no exponent is ever positive, so nothing overflows even
     for a huge k or a huge t (an earlier version gave NaN there).
 
-    Note that at s = 0 both terms are exactly 0. That's what makes the visit
+    At s = 0 both terms are exactly 0. That's what makes the visit
     convention work: a visit at a dose time sees the value from just before the dose.
 
     t      : float or array-like, shape (n_t,)
@@ -98,6 +102,65 @@ def simulate_lvef(t, L0, b_R, b_P, k, dosing):
     """Noiseless LVEF at times t. Same as simulate_states(...)["L"], just shorter to call."""
     H, G = response_basis(t, k, dosing)
     return L0 - b_R * G - b_P * H
+
+
+def simulate_states_ode(t, L0, b_R, b_P, k, dosing, rtol=1e-10, atol=1e-12):
+    """Same output as simulate_states, but from solving the two ODEs with solve_ivp.
+
+    This is the numerical path for checking the closed form. It's a lot slower, so
+    nothing else uses it.
+
+    It integrates piecewise between doses: one solve_ivp call from t_j to t_{j+1},
+    starting from wherever the previous piece ended (R = P = 0 before the first
+    dose). Inside a piece E(t) is smooth and only has the doses given so far in it,
+    so the solver never has to step across the jump E makes at a dose time.
+
+    The s = 0 term: a time exactly at a dose t_j gets the state at the start of
+    piece j, which is where piece j - 1 ended, so dose j hasn't added anything yet.
+    That's the same "just before the dose" value the closed form gives. This is
+    also why each piece builds its own E from doses 0..j instead of calling
+    inputs.effective_input: that one already counts dose j + 1 at t = t_{j+1}, and
+    the solver does evaluate the right-hand side at the end of the piece.
+
+    DOP853 (an explicit 8th-order method) with rtol 1e-10 and atol 1e-12 agrees with
+    the closed form to better than 1e-8 over our half-life grid (scripts/W3.py prints
+    the number). It isn't meant for huge k, where the equations get stiff and it
+    slows down.
+
+    returns: dict with "R", "P", "L", each an array of shape (n_t,)
+    """
+    if np.ndim(k) != 0:
+        raise ValueError(f"k should be one number, got shape {np.shape(k)}")
+    k = float(k)
+    if not (np.isfinite(k) and k >= 0):
+        raise ValueError(f"k has to be a finite number >= 0, got {k}")
+    t = check_times(t)
+    times, q, tau = dosing.times, dosing.q, dosing.tau
+    R, P = np.zeros(t.size), np.zeros(t.size)          # stays 0 before the first dose
+    if times.size:
+        # Piece j runs from dose j to dose j + 1. The last one runs to the last time we need.
+        ends = np.append(times[1:], max(t.max(), times[-1]))
+        state = np.zeros(2)
+        for j, (start, end) in enumerate(zip(times, ends)):
+            last = j == times.size - 1
+            here = (t >= start) & ((t <= end) if last else (t < end))
+            if end == start:
+                # Two doses at the same time: nothing to integrate, the state just carries on.
+                R[here], P[here] = state
+                continue
+
+            def rhs(s, y, t_on=times[:j + 1], q_on=q[:j + 1]):
+                E = np.sum(q_on * np.exp(-(s - t_on) / tau)) / tau     # doses 0..j only
+                return [b_R * E - k * y[0], b_P * E]
+
+            sol = solve_ivp(rhs, (start, end), state, method="DOP853", rtol=rtol, atol=atol,
+                            dense_output=True)
+            if not sol.success:
+                raise RuntimeError(f"solve_ivp failed between t = {start} and {end}: {sol.message}")
+            if here.any():
+                R[here], P[here] = sol.sol(t[here])
+            state = sol.y[:, -1]
+    return {"R": R, "P": P, "L": L0 - R - P}
 
 
 def params_from_case(a, f_P, half_life_weeks, L0=75.0):
