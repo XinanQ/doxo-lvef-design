@@ -85,9 +85,9 @@ The first three come from the replies to my emails (Oct 29 and Nov 8).
   individual-animal regime. Both are illustrative.
 
 `scripts/W1.py` still has its Week 1 labels (`identified`, `lower bound only`,
-`upper bound only`, `disjoint`, `not identified`). They came from a stricter rule
-of my own (details in `docs/weekly/W1.md`). W1 keeps them, so its numbers don't
-change; `fit.py` uses the classes above.
+`upper bound only`, `disjoint`, `not identified`). They come from the stricter
+rule I used in Week 1 (details in `docs/weekly/W1.md`). W1 keeps them, so its
+numbers don't change; `fit.py` uses the classes above.
 
 ## Why I did it this way
 

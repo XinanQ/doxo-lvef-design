@@ -1,10 +1,9 @@
 """Tests for the bounded fitting interface (fit.py).
 
 The first one is the test the Oct 29 reply asked for: on a noiseless case,
-refinement moves the half-life by less than one grid step. The rest are my own
-checks. The second one makes sure the plain grid gives W1's fits, and that the
-95% set and its class come out the same when worked out from W1's own profile. The
-others each cover one rule:
+refinement moves the half-life by less than one grid step. The second one makes
+sure the plain grid gives W1's fits, and that the 95% set and its class come out
+the same when worked out from W1's own profile. The others each cover one rule:
   - no refinement at the grid end, with b_R = 0 or on a cap;
   - keeping whichever RSS is lower;
   - the second-minimum rule;
@@ -65,7 +64,7 @@ def test_refinement_moves_the_half_life_less_than_one_grid_step():
         assert refined["half_life"] == pytest.approx(2.0, rel=1e-3)
 
 
-# ---------- my own checks ----------
+# ---------- the other rules ----------
 
 @pytest.fixture(scope="module")
 def w1():
