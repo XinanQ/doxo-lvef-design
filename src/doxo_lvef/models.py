@@ -21,8 +21,8 @@ Shapes: every function that takes t accepts a float or a 1-D array-like of lengt
 n_t and returns 1-D arrays of length n_t. A plain float t comes back as an array of
 length 1. 2-D t or NaN/inf times get a ValueError instead of a silently weird answer.
 
-(Adding noise isn't in here on purpose. W1.py does its own, and a proper noise
-helper will come with the Week 4 seed work.)
+(Adding noise isn't in here on purpose. W1.py does its own, and the pilot's noise is in
+evaluate.py.)
 """
 import numpy as np
 from scipy.integrate import solve_ivp

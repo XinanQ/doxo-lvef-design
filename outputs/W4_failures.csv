@@ -1,0 +1,3 @@
+# seed=20261019 n_reps=20 declared_b_R_cap=6 refit_b_R_cap=12
+# env: python=3.13.13 numpy=2.3.4 scipy=1.16.2
+case,a,f_P,half_life_true,sigma,rep,schedule,b_R_cap,status,L0_hat,b_R_true,b_R_hat,b_P_true,b_P_hat,half_life_hat,half_life_class,set_low,set_high,set_has_gap,covered,nadir_depth_true,nadir_depth_hat,norm_amp_loss,at_grid_end,on_cap,cap_dependent,notes

@@ -1,9 +1,8 @@
 # Fall pilot settings (Weeks 1-5).
 #
 # This file is the one place the pilot's assumptions live, so we don't end up
-# with three slightly different copies in three scripts. Two exceptions for now:
-# the replicate count is still only N_REPS in W1 (it moves in here with the
-# Week 4 seed work), and scripts/W1.py keeps its own settings, simulator and
+# with three slightly different copies in three scripts. One exception:
+# scripts/W1.py keeps its own settings (with its 3 replicates), simulator and
 # grid fit, so the Week 1 numbers stay a fixed reference and it still works as
 # the fallback. tests/test_config.py checks that W1 and this file still agree.
 #
@@ -17,6 +16,13 @@
 # results from it, so it must never be used for the final evaluation. Those seeds
 # get picked and frozen separately before the final runs (Week 8 in the proposal).
 development = 20261019
+
+[pilot]
+# Replicates per case for the fixed-schedule pilot (proposal: 20). Each
+# (case, replicate) gets its own random stream, made from the development seed,
+# the case number and the replicate number, so changing this number or the case
+# list doesn't change anybody else's noise.
+n_reps = 20
 
 [dosing]
 # Eight weekly doses of 1.25 mg/kg, the first one at week 0.
@@ -85,6 +91,12 @@ noise_sd = 3.0
 L0_bounds = [50.0, 95.0]
 b_R_bounds = [0.0, 6.0]
 b_P_bounds = [0.0, 6.0]
+# 6 is the declared cap on b_R for all pilot results (Nov 10 reply), so
+# "identified" always means "identified given b_R <= 6". A fit that ends with
+# b_R on the cap is fitted once more with this wider cap, to see whether its
+# class or the low end of its 95% set depends on the cap. Never wider than this.
+# Every output row says which cap it was fitted with.
+b_R_refit_cap = 12.0
 # Log-spaced recovery half-life grid. An interval open above at 52 weeks means
 # slower than we can resolve over 20 weeks of follow-up, which includes
 # persistence: even a 52-week half-life recovers about 23% of a deficit in 20

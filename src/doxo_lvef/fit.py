@@ -18,9 +18,12 @@ scripts/W1.py. On top of it (Oct 29 and Nov 8 replies):
     class (identifiability.profile_set), the bound hits and the fitted nadir depth.
   - Failed fits get their own status, since the proposal keeps them in the
     denominator (loss 100).
+
+covers_truth() is the coverage check from the Nov 10 reply (simulations only).
 """
 import numpy as np
 from scipy.optimize import lsq_linear, minimize_scalar
+from scipy.stats import chi2
 
 from doxo_lvef.identifiability import profile_set
 from doxo_lvef.inputs import check_times
@@ -83,6 +86,23 @@ def local_minima(delta, tie_tol=TIE_TOL):
         if left > lowest and right > lowest:
             minima.append(int(run[np.argmin(delta[run])]))
     return minima
+
+
+def refine_between(t, y, dosing, lower, upper, k_low, k_high):
+    """Bounded 1-D search for the lowest RSS in log k between k_low and k_high (the two grid
+    neighbours of a best point), with lsq_linear inside.
+
+    returns (k, coefs, rss, ok) at the point it ends on.
+    """
+    def objective(log_k):
+        _, r, ok = solve_at_k(t, y, np.exp(log_k), dosing, lower, upper)
+        return r if ok else np.inf
+    # xatol is in log k, so it's about 1e-8 relative in the half-life.
+    opt = minimize_scalar(objective, bounds=(np.log(k_low), np.log(k_high)), method="bounded",
+                          options={"xatol": 1e-8})
+    k = float(np.exp(opt.x))
+    coefs, rss, ok = solve_at_k(t, y, k, dosing, lower, upper)
+    return k, coefs, rss, ok
 
 
 def nadir_depth(L0, b_R, b_P, k, dosing, t_from, t_to):
@@ -176,25 +196,13 @@ def fit_lvef(t, y, dosing, sigma, *, half_lives, lower, upper, level=0.95, refin
     grid_best = int(np.argmin(rss))
     candidates = [i for i in local_minima(delta) if delta[i] <= NEAR_OPTIMAL_DELTA]
 
-    def refine_between(i):
-        # Bounded 1-D search in log k between the two grid neighbours of point i.
-        def objective(log_k):
-            _, r, ok = solve_at_k(t, y, np.exp(log_k), dosing, lower, upper)
-            return r if ok else np.inf
-        # xatol is in log k, so it's about 1e-8 relative in the half-life.
-        opt = minimize_scalar(objective, bounds=(np.log(k_grid[i + 1]), np.log(k_grid[i - 1])),
-                              method="bounded", options={"xatol": 1e-8})
-        k = float(np.exp(opt.x))
-        c, r, ok = solve_at_k(t, y, k, dosing, lower, upper)
-        return k, c, r, ok
-
     near_optimal = []
     for i in candidates:
         entry = {"grid_index": i, "half_life": float(half_lives[i]), "k": float(k_grid[i]),
                  **dict(zip(NAMES, coefs[i].tolist())), "rss": float(rss[i]), "refined": False}
         # Not at the bound (grid end or a cap) and not b_R near zero: only then refine.
         if refine and 0 < i < last and abs(coefs[i, 1]) > tol[1] and not profile["at_cap"][i]:
-            k, c, r, ok = refine_between(i)
+            k, c, r, ok = refine_between(t, y, dosing, lower, upper, k_grid[i + 1], k_grid[i - 1])
             if ok and r < rss[i]:                     # keep whichever is lower
                 entry.update(half_life=float(np.log(2) / k), k=k, **dict(zip(NAMES, c.tolist())),
                              rss=r, refined=True)
@@ -240,3 +248,37 @@ def fit_lvef(t, y, dosing, sigma, *, half_lives, lower, upper, level=0.95, refin
             "nadir_depth": depth, "at_grid_end": at_grid_end, "on_cap": bool(caps),
             "coef_at_bound": " ".join(name for name, h in zip(NAMES, hit) if h),
             "notes": "; ".join(notes), "near_optimal": near_optimal, "profile": profile}
+
+
+def covers_truth(t, y, dosing, sigma, result, true_half_life, *, lower, upper, level=0.95):
+    """Does the 95% set of a fit contain the true half-life? (Nov 10 reply, simulations only)
+
+    This doesn't use the grid for the true value. It solves the bounded linear problem once
+    more at the true half-life and compares that RSS with the minimum:
+
+        covered  if  (RSS(h_true) - RSS_min) / sigma^2 <= chi2.ppf(level, 1)
+
+    RSS_min is the refined minimum when the best grid point is interior, and the grid
+    minimum when it's at the grid end. If RSS(h_true) is lower than that, it becomes the
+    minimum, so the statistic is never negative.
+
+    result  : what fit_lvef returned for the same t, y and bounds
+    returns : True or False, or None for a failed fit
+    """
+    if result["status"] != "ok":
+        return None
+    t = check_times(t)
+    y = np.asarray(y, dtype=float)
+    half_lives, rss = result["profile"]["half_lives"], result["profile"]["rss"]
+    i = int(np.argmin(rss))
+    rss_min = float(rss[i])
+    if 0 < i < half_lives.size - 1:
+        k_grid = np.log(2) / half_lives
+        _, _, refined, ok = refine_between(t, y, dosing, lower, upper, k_grid[i + 1], k_grid[i - 1])
+        if ok:
+            rss_min = min(rss_min, refined)
+    _, rss_true, ok = solve_at_k(t, y, np.log(2) / true_half_life, dosing, lower, upper)
+    if not ok:
+        return None
+    rss_min = min(rss_min, rss_true)
+    return bool((rss_true - rss_min) / sigma ** 2 <= chi2.ppf(level, 1))

@@ -124,9 +124,28 @@ def test_w3_runs_and_the_two_paths_agree(tmp_path, capsys):
     assert "so they agree" in printed and "so the class is identified" in printed
 
 
+def test_w4_runs_and_matches_the_committed_results(tmp_path):
+    # Same idea as the W1 check: same seed + same code should give exactly the committed pilot
+    # results. Run pytest BEFORE rerunning W4, and explain any diff in docs/weekly/.
+    w4 = load_script("W4")
+    w4.OUT_DIR = tmp_path
+    w4.main()
+    assert (tmp_path / "W4_bands.png").exists()
+    for name in ("W4_fits.csv", "W4_failures.csv", "W4_summary.csv"):
+        new = (tmp_path / name).read_text(encoding="utf-8").splitlines()
+        old = (REPO / "outputs" / name).read_text(encoding="utf-8").splitlines()
+        assert [x for x in new if not x.startswith("# env:")] == [x for x in old if not x.startswith("# env:")], name
+    # Every fit is there once at the declared cap, and every row says which cap it used.
+    rows = csv_rows(tmp_path / "W4_fits.csv")
+    assert sum(r["b_R_cap"] == "6" for r in rows) == 3 * 20 * 3
+    assert {r["b_R_cap"] for r in rows} == {"6", "12"}
+
+
 @pytest.mark.parametrize("name, files", [("W1", ["W1_fits.csv", "W1_fits.png"]),
                                          ("W2", ["W2_trajectories.png"]),
-                                         ("W3", ["W3_check.png"])], ids=["W1", "W2", "W3"])
+                                         ("W3", ["W3_check.png"]),
+                                         ("W4", ["W4_fits.csv", "W4_failures.csv", "W4_summary.csv",
+                                                 "W4_bands.png"])], ids=["W1", "W2", "W3", "W4"])
 def test_script_runs_as_a_command(name, files, tmp_path):
     # Run the real `python scripts/<name>.py`, so the `if __name__ == "__main__"` part and the
     # default output folder get tested too. It runs on a copy of scripts/, src/ and configs/, so the

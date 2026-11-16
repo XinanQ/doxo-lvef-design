@@ -9,6 +9,7 @@ the same when worked out from W1's own profile. The others each cover one rule:
   - the second-minimum rule;
   - the 95% set measured from the refined minimum;
   - the nadir depth, clipping, "failed" and bad input.
+The coverage check from the Nov 10 reply is at the end.
 
 Some use a made-up profile in place of solve_at_k, because none of our real fits
 has a second minimum or a failed solve.
@@ -22,7 +23,7 @@ from scipy.optimize import minimize_scalar
 from scipy.stats import chi2
 
 from doxo_lvef import fit as fit_module
-from doxo_lvef.fit import fit_lvef, fit_settings, local_minima, nadir_depth
+from doxo_lvef.fit import covers_truth, fit_lvef, fit_settings, local_minima, nadir_depth
 from doxo_lvef.inputs import dosing_from_config, load_config
 from doxo_lvef.models import params_from_case, response_basis, simulate_lvef
 
@@ -33,6 +34,7 @@ SETTINGS = fit_settings(CFG)
 HALF_LIVES = SETTINGS["half_lives"]
 GRID_STEP = np.log(HALF_LIVES[1] / HALF_LIVES[0])        # one grid step, in log half-life
 CUTOFF = chi2.ppf(0.95, 1)
+BOUNDS = {key: SETTINGS[key] for key in ("lower", "upper", "level")}
 
 
 def noiseless(schedule, a, f_P, half_life):
@@ -278,3 +280,45 @@ def test_bad_input_is_rejected():
         fit_lvef(t, np.r_[y[:-1], np.nan], DOSING, 1.0, **SETTINGS)
     with pytest.raises(ValueError, match="half_lives"):
         fit_lvef(t, y, DOSING, 1.0, **{**SETTINGS, "half_lives": HALF_LIVES[::-1]})
+
+
+# ---------- coverage (Nov 10 reply) ----------
+
+def test_coverage_on_noiseless_data():
+    # The true half-life fits perfectly, so it's covered. 20 weeks is far outside the 95% set
+    # (1.4 to 3.0 weeks here), so it isn't.
+    t, y = noiseless("uniform", 4, 0.3, 2)
+    result = fit_lvef(t, y, DOSING, 0.25, **SETTINGS)
+    assert covers_truth(t, y, DOSING, 0.25, result, 2.0, **BOUNDS) is True
+    assert covers_truth(t, y, DOSING, 0.25, result, 20.0, **BOUNDS) is False
+
+
+def test_coverage_uses_the_refined_minimum(monkeypatch):
+    # Same made-up profile as above: RSS = 10 + c ln(h/2)^2, with the real minimum between grid
+    # points. A "true" half-life 3 grid steps above the best point is within 3.84 of the grid's
+    # minimum but not of the refined one, so it should count as not covered.
+    i = int(np.argmin(np.abs(np.log(HALF_LIVES / 2.0))))
+    c = CUTOFF / (np.log(HALF_LIVES[i + 3] / 2) ** 2 - np.log(HALF_LIVES[i] / 2) ** 2 / 2)
+    monkeypatch.setattr(fit_module, "solve_at_k", fake_profile(lambda h: 10 + c * np.log(h / 2) ** 2))
+    t, y = noiseless("uniform", 4, 0.3, 2)
+    result = fit_lvef(t, y, DOSING, 1.0, **SETTINGS)
+    assert covers_truth(t, y, DOSING, 1.0, result, HALF_LIVES[i + 3], **BOUNDS) is False
+    assert covers_truth(t, y, DOSING, 1.0, result, HALF_LIVES[i + 2], **BOUNDS) is True
+
+
+def test_coverage_when_the_truth_beats_the_minimum():
+    # True half-life 100 weeks, past the grid: the best point is the 52-week end, so the grid
+    # minimum is used. The truth itself fits better than anything on the grid, so it becomes the
+    # minimum and the statistic is 0, not negative.
+    t, y = noiseless("uniform", 4, 0.3, 100)
+    result = fit_lvef(t, y, DOSING, 0.25, **SETTINGS)
+    assert result["at_grid_end"] and covers_truth(t, y, DOSING, 0.25, result, 100.0, **BOUNDS) is True
+
+
+def test_coverage_of_a_failed_fit_is_none(monkeypatch):
+    real = fit_module.solve_at_k
+    monkeypatch.setattr(fit_module, "solve_at_k", lambda *args: (*real(*args)[:2], False))
+    t, y = noiseless("uniform", 4, 0.3, 2)
+    result = fit_lvef(t, y, DOSING, 0.25, **SETTINGS)
+    assert covers_truth(t, y, DOSING, 0.25, result, 2.0, **BOUNDS) is None
+

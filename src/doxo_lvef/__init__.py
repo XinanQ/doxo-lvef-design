@@ -7,4 +7,6 @@ Modules get added week by week as we actually build them:
     identifiability.py (Week 2)  what the data can say about the half-life: profile_interval (W1's labels)
                        (Week 3)  plus profile_set: the 95% set and its class (Nov 8 reply)
     fit.py             (Week 3)  fit_lvef: the bounded grid fit, refinement, near-optimal minima
+                       (Week 4)  plus covers_truth: the coverage check (Nov 10 reply)
+    evaluate.py        (Week 4)  the pilot runs: seeds, the cap refit, failed fits, summaries
 """

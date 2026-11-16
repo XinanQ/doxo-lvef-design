@@ -17,32 +17,34 @@ python -m pytest
 python scripts/W1.py
 python scripts/W2.py
 python scripts/W3.py
+python scripts/W4.py
 ```
 
-If the tests pass and the three scripts save their files in `outputs/`, you're
+If the tests pass and the four scripts save their files in `outputs/`, you're
 good. `requirements.txt` pins the versions I test with, so everyone gets the
-same numbers. The scripts overwrite `outputs/`, so run the tests first (one of
-them compares W1's output with the committed CSV) and check `git diff outputs/`
+same numbers. The scripts overwrite `outputs/`, so run the tests first (two of
+them compare W1's and W4's output with the committed CSVs) and check `git diff outputs/`
 afterwards.
 
 ## What's where
 
 ```
-scripts/        one script per milestone (W1.py, W2.py, W3.py)
+scripts/        one script per milestone (W1.py, W2.py, W3.py, W4.py)
 src/doxo_lvef/  the package: inputs.py (dosing, E(t), visits, config), models.py (the model),
                 identifiability.py (what the data can say about the half-life),
-                fit.py (the bounded fit)
+                fit.py (the bounded fit), evaluate.py (the pilot runs and their summaries)
 tests/          unit tests, run with `python -m pytest`
 configs/        pilot.toml: the pilot settings in one place
 data/           data from published rat studies (none yet), see data/README.md
 docs/weekly/    a note for each week: what I did, what I'm unsure about
+docs/walkthrough.md  the outline for the recorded code walkthrough
 outputs/        results from running the scripts (committed so you can look without running anything)
 ```
 
 The proposal suggests splitting the package into `inputs.py`, `models.py`,
 `fit.py`, `identifiability.py`, `design.py` and `evaluate.py`. I'm only adding
 each one when we get to that part, so the folder doesn't fill up with empty
-files.
+files. `design.py` is the one that's left.
 
 ## My part of the fall pilot
 
@@ -51,7 +53,7 @@ files.
 | 1 | Oct 19-23 | minimal end-to-end script | done, plus the Week 1 follow-ups from the Oct 29 reply (`docs/weekly/W1.md`) |
 | 2 | Oct 26-30 | simulator + unit tests | done (`docs/weekly/W2.md`); joint-session model notes still to write |
 | 3 | Nov 2-6 | check analytical vs numerical solution, fitting interface (`fit.py`) | done (`docs/weekly/W3.md`) |
-| 4 | Nov 9-13 | config and seed tests, failure logging, a recorded walkthrough, reviewing the fixed-schedule comparison | |
+| 4 | Nov 9-13 | config and seed tests, failure logging, a recorded walkthrough, reviewing the fixed-schedule comparison | code and tests done (`docs/weekly/W4.md`); the recording and the review are still to do |
 | 5 | Nov 16-20 | freeze the pilot and hand it off | |
 
 As the proposal asks, `scripts/W1.py` keeps working the whole time, even now that
@@ -60,7 +62,7 @@ the package has its own fit, so nobody has to wait on new code.
 
 ## Conventions
 
-The first three come from the replies to my emails (Oct 29 and Nov 8).
+The first four come from the replies to my emails (Oct 29, Nov 8 and Nov 10).
 
 - Visits in dose weeks are taken just *before* that week's dose, at the trough.
   Visit times are floats, and any shift goes in `offset_weeks` in
@@ -78,6 +80,14 @@ The first three come from the replies to my emails (Oct 29 and Nov 8).
     (reaches 0.1 weeks) or `uninformative` (both).
   - Bound hits (the half-life at the grid end, b_R at 6 and so on) are flagged,
     and the fitted nadir depth is reported too.
+- The cap on b_R:
+  - 6 is the declared cap for all pilot results, so `identified` means
+    identified given b_R <= 6.
+  - A fit that ends on the cap is fitted once more with a cap of 12, never wider.
+    Both results are kept, each row says which cap it used, and the fit is
+    `cap_dependent` if its class or the low end of its 95% set changes.
+  - Coverage is checked by solving once more at the true half-life, not on the
+    grid. With 20 replicates it's reported as a count.
 - `open above` means slower than we can resolve over 20 weeks, which includes
   persistence (G_k turns into H as k goes to 0). The proposal reruns this with a
   104-week bound in spring.
@@ -119,7 +129,9 @@ numbers don't change; `fit.py` uses the classes above.
   more often. The half-life is never averaged; the Week 4 summaries look at it
   only within the `identified` class, next to how often each class shows up.
 - As the proposal says, noise is drawn once on the union of visit times and
-  shared by the three schedules, so they're compared on the same noise.
+  shared by the three schedules, so they're compared on the same noise. In the
+  pilot every (case, replicate) has its own random stream, so changing the
+  number of replicates or one case doesn't move anybody else's noise.
 - W1 keeps its own copy of the settings, model and grid fit, so the Week 1
   numbers stay a fixed reference. `tests/test_config.py` checks that it still
   agrees with `pilot.toml` and the package.
