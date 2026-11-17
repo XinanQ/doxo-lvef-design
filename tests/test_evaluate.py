@@ -7,8 +7,7 @@ import numpy as np
 import pytest
 
 from doxo_lvef import fit as fit_module
-from doxo_lvef.evaluate import (FAILED_LOSS, noise_stream, pick_visits, pilot_data, pilot_times, run_pilot,
-                                summarize)
+from doxo_lvef.evaluate import noise_stream, pick_visits, pilot_data, pilot_times, run_pilot, summarize
 from doxo_lvef.inputs import dosing_from_config, load_config
 from doxo_lvef.models import simulate_lvef
 
@@ -96,19 +95,18 @@ def test_a_visit_off_the_candidate_grid_is_an_error():
 
 # ---------- failures ----------
 
-def test_failed_fits_stay_in_with_loss_100(monkeypatch):
+def test_failed_fits_stay_in_the_denominator(monkeypatch):
     # bvls hasn't failed on our data, so make every solve report a failure. The fits should still
-    # be there as rows: status "failed", loss 100, no estimate, and counted in the denominator.
+    # be there as rows: status "failed", no estimate, and counted in the denominator.
     real = fit_module.solve_at_k
     monkeypatch.setattr(fit_module, "solve_at_k", lambda *args: (*real(*args)[:2], False))
     cfg = copy.deepcopy(CFG)
     cfg["pilot"]["n_reps"] = 1
     rows = run_pilot(cfg)
     assert len(rows) == 9 and all(r["status"] == "failed" for r in rows)
-    assert all(r["norm_amp_loss"] == FAILED_LOSS and r["half_life_hat"] is None and r["covered"] is None
-               for r in rows)
+    assert all(r["half_life_hat"] is None and r["covered"] is None for r in rows)
     for s in summarize(rows, 6.0):
-        assert (s["n"], s["failed"], s["covered_of"], s["mean_norm_amp_loss"]) == (1, 1, 0, FAILED_LOSS)
+        assert (s["n"], s["failed"], s["covered_of"]) == (1, 1, 0)
         assert s["identified"] + s["open_above"] + s["open_below"] + s["uninformative"] == 0
 
 
@@ -143,16 +141,16 @@ def test_fits_off_the_cap_have_one_row_and_no_cap_label():
 # ---------- summaries ----------
 
 def test_summaries_on_made_up_rows():
-    def row(cls, low, high, estimate, covered, cap=6.0, status="ok", loss=1.0, cap_dependent=None):
+    def row(cls, low, high, estimate, covered, cap=6.0, status="ok", cap_dependent=None):
         return dict(case=0, schedule="uniform", b_R_cap=cap, status=status, half_life_true=2.0,
                     half_life_class=cls, set_low=low, set_high=high, half_life_hat=estimate,
-                    covered=covered, norm_amp_loss=loss, cap_dependent=cap_dependent)
+                    covered=covered, cap_dependent=cap_dependent)
     rows = [row("identified", 1.0, 4.0, 4.0, True),                       # error log2(4/2) = 1
             row("identified", 1.0, 8.0, 1.0, False),                      # error |log2(1/2)| = 1
             row("open above", 2.0, 52.0, 30.0, True, cap_dependent=True),
             row("open above", 0.5, 52.0, 30.0, True, cap=12.0, cap_dependent=True),   # the refit: not counted
             row("uninformative", 0.1, 52.0, None, True, cap_dependent=False),
-            row("failed", None, None, None, None, status="failed", loss=FAILED_LOSS)]
+            row("failed", None, None, None, None, status="failed")]
     (s,) = summarize(rows, 6.0)
     assert (s["n"], s["failed"]) == (5, 1)
     assert (s["identified"], s["open_above"], s["open_below"], s["uninformative"]) == (2, 1, 0, 1)
@@ -161,5 +159,4 @@ def test_summaries_on_made_up_rows():
     assert s["median_width_log2"] == pytest.approx((3 + np.log2(26)) / 2)
     # The half-life error only looks at the identified fits.
     assert (s["n_identified"], s["median_abs_log2_error"]) == (2, 1.0)
-    assert s["mean_norm_amp_loss"] == pytest.approx((4 * 1.0 + FAILED_LOSS) / 5)
     assert (s["b_R_on_cap"], s["cap_dependent"]) == (2, 1)

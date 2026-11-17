@@ -18,12 +18,10 @@ its 95% set changes. Every row says which cap it was fitted with.
 """
 import numpy as np
 
-from doxo_lvef.fit import BOUND_TOL, covers_truth, fit_lvef, fit_settings, nadir_depth
+from doxo_lvef.fit import BOUND_TOL, covers_truth, fit_lvef, fit_settings
 from doxo_lvef.inputs import dosing_from_config, load_config, visit_times
 from doxo_lvef.models import params_from_case, simulate_lvef
 
-# Proposal: failed fits get normalized loss 100 and stay in the denominator.
-FAILED_LOSS = 100.0
 CLASSES = ("identified", "open above", "open below", "uninformative")
 
 
@@ -63,14 +61,10 @@ def pick_visits(cfg, dosing, t_all, y_all, schedule):
 def _row(case_id, case, rep, schedule, truth, t, y, dosing, result, settings):
     """One output row for one fit. settings holds the bounds this fit actually used."""
     ok = result["status"] == "ok"
-    a, half_life = case["a"], case["half_life_weeks"]
-    loss = FAILED_LOSS
-    if ok:
-        # Normalized squared amplitude error, the proposal's ranking objective.
-        loss = float(np.mean([((result[b] - truth[b]) / a) ** 2 for b in ("b_R", "b_P")]))
+    half_life = case["half_life_weeks"]
     covered = covers_truth(t, y, dosing, case["noise_sd"], result, half_life, lower=settings["lower"],
                            upper=settings["upper"], level=settings["level"])
-    return {"case": case_id, "a": a, "f_P": case["f_P"], "half_life_true": half_life,
+    return {"case": case_id, "a": case["a"], "f_P": case["f_P"], "half_life_true": half_life,
             "sigma": case["noise_sd"], "rep": rep, "schedule": schedule,
             "b_R_cap": float(settings["upper"][1]), "status": result["status"],
             "L0_hat": result["L0"], "b_R_true": truth["b_R"], "b_R_hat": result["b_R"],
@@ -79,9 +73,7 @@ def _row(case_id, case, rep, schedule, truth, t, y, dosing, result, settings):
             "half_life_class": result["half_life_class"],
             "set_low": result["set_low"], "set_high": result["set_high"],
             "set_has_gap": result["set_has_gap"], "covered": covered,
-            "nadir_depth_true": nadir_depth(truth["L0"], truth["b_R"], truth["b_P"], truth["k"], dosing,
-                                            t.min(), t.max()),
-            "nadir_depth_hat": result["nadir_depth"], "norm_amp_loss": loss,
+            "nadir_depth_hat": result["nadir_depth"],
             "at_grid_end": result["at_grid_end"], "on_cap": result["on_cap"],
             "cap_dependent": None, "notes": result["notes"]}
 
@@ -91,7 +83,7 @@ def run_pilot(cfg=None, n_reps=None):
 
     Each fit gives one row with the declared cap on b_R. A fit with b_R on that cap gives a
     second row, fitted with the refit cap, and both rows get cap_dependent (True or False).
-    Failed fits stay in as rows with status "failed" and loss 100.
+    Failed fits stay in as rows with status "failed", so they're still in the denominator.
     """
     cfg = load_config() if cfg is None else cfg
     n_reps = cfg["pilot"]["n_reps"] if n_reps is None else n_reps
@@ -133,7 +125,6 @@ def summarize(rows, declared_cap):
         n_identified, median_abs_log2_error
                                   half-life error |log2(estimate / truth)|, within the
                                   identified fits only (None if there aren't any)
-        mean_norm_amp_loss        mean normalized amplitude loss, failed fits counted as 100
         b_R_on_cap, cap_dependent how many fits ended with b_R on the declared cap, and how
                                   many of those changed class or low end with the refit cap
     """
@@ -154,7 +145,6 @@ def summarize(rows, declared_cap):
                     "median_width_log2": float(np.median(widths)) if widths else None,
                     "n_identified": len(identified),
                     "median_abs_log2_error": float(np.median(errors)) if errors else None,
-                    "mean_norm_amp_loss": float(np.mean([r["norm_amp_loss"] for r in group])),
                     "b_R_on_cap": sum(r["cap_dependent"] is not None for r in group),
                     "cap_dependent": sum(r["cap_dependent"] is True for r in group)})
     return out

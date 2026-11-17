@@ -73,13 +73,13 @@ def print_summary(cfg, summary, n_failed):
           f"declared cap b_R <= {cfg['fit']['b_R_bounds'][1]:g}. Failed fits: {n_failed}.")
     print("Counts are out of the replicates. 'identified' means identified given the declared cap.\n")
     print("case  schedule   identified  open above  open below  uninformative  covered  "
-          "width (log2)  half-life error (log2)  on cap (cap-dep.)  mean loss")
+          "width (log2)  half-life error (log2)  on cap (cap-dep.)")
     for s in summary:
         error = "-" if s["median_abs_log2_error"] is None else f"{s['median_abs_log2_error']:.2f} (n={s['n_identified']})"
         on_cap = f"{s['b_R_on_cap']} ({s['cap_dependent']})"
         print(f"{s['case']:>4}  {s['schedule']:<9}  {s['identified']:>10}  {s['open_above']:>10}  "
               f"{s['open_below']:>10}  {s['uninformative']:>13}  {s['covered']:>3}/{s['covered_of']:<3}  "
-              f"{s['median_width_log2']:>12.2f}  {error:>22}  {on_cap:>17}  {s['mean_norm_amp_loss']:>9.2f}")
+              f"{s['median_width_log2']:>12.2f}  {error:>22}  {on_cap:>17}")
     print()
     print("width = median width of the 95% set. half-life error = median |log2(estimate / truth)| "
           "within the identified fits only.")

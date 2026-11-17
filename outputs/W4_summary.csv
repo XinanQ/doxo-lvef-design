@@ -1,12 +1,12 @@
 # seed=20261019 n_reps=20 declared_b_R_cap=6 refit_b_R_cap=12
 # env: python=3.13.13 numpy=2.3.4 scipy=1.16.2
-case,schedule,n,failed,identified,open_above,open_below,uninformative,covered,covered_of,median_width_log2,n_identified,median_abs_log2_error,mean_norm_amp_loss,b_R_on_cap,cap_dependent
-0,uniform,20,0,7,3,0,10,19,20,8.86945,7,1.48909,0.815467,5,2
-0,treatment,20,0,7,1,0,12,20,20,9.02237,7,0.957655,0.9225,3,0
-0,late,20,0,9,0,0,11,20,20,9.02237,9,1.41642,1.39365,2,1
-1,uniform,20,0,2,7,0,11,20,20,9.02237,2,1.96367,0.210845,2,0
-1,treatment,20,0,1,11,0,8,20,20,8.33422,1,1.27552,0.294686,2,2
-1,late,20,0,2,5,0,13,20,20,9.02237,2,2.5232,0.279615,1,0
-2,uniform,20,0,3,0,0,17,19,20,9.02237,3,1.42844,5.11597,5,2
-2,treatment,20,0,3,0,0,17,20,20,9.02237,3,1.73428,9.06945,10,3
-2,late,20,0,3,0,0,17,19,20,9.02237,3,1.8872,4.34727,5,2
+case,schedule,n,failed,identified,open_above,open_below,uninformative,covered,covered_of,median_width_log2,n_identified,median_abs_log2_error,b_R_on_cap,cap_dependent
+0,uniform,20,0,7,3,0,10,19,20,8.86945,7,1.48909,5,2
+0,treatment,20,0,7,1,0,12,20,20,9.02237,7,0.957655,3,0
+0,late,20,0,9,0,0,11,20,20,9.02237,9,1.41642,2,1
+1,uniform,20,0,2,7,0,11,20,20,9.02237,2,1.96367,2,0
+1,treatment,20,0,1,11,0,8,20,20,8.33422,1,1.27552,2,2
+1,late,20,0,2,5,0,13,20,20,9.02237,2,2.5232,1,0
+2,uniform,20,0,3,0,0,17,19,20,9.02237,3,1.42844,5,2
+2,treatment,20,0,3,0,0,17,20,20,9.02237,3,1.73428,10,3
+2,late,20,0,3,0,0,17,19,20,9.02237,3,1.8872,5,2

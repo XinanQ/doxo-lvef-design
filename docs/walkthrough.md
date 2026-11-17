@@ -17,5 +17,5 @@ is also run by `tests/test_scripts.py`.
    Open `outputs/W4_fits.csv` (one row per fit, with its cap) and
    `outputs/W4_summary.csv`, then `outputs/W4_bands.png`.
 7. Seeds and failures, `src/doxo_lvef/evaluate.py`: one stream per
-   (case, replicate), paired noise, failed fits kept with loss 100.
+   (case, replicate), paired noise, failed fits kept as rows.
 8. `python scripts/W1.py` still runs and gives the Week 1 numbers.
